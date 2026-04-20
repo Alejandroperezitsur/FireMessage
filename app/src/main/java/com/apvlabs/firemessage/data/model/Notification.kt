@@ -6,9 +6,10 @@ package com.apvlabs.firemessage.data.model
  */
 data class Notification(
     val id: String = "",
-    val title: String = "",
-    val body: String = "",
-    val type: NotificationType = NotificationType.MENSAJE_GENERAL,
+    val title: String,
+    val body: String,
+    val type: NotificationType,
+    val priority: NotificationPriority = type.getDefaultPriority(),
     val isRead: Boolean = false,
     val timestamp: Long = System.currentTimeMillis(),
     val data: Map<String, String> = emptyMap()

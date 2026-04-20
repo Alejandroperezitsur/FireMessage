@@ -183,6 +183,48 @@
             margin-top: 5px;
         }
 
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .analytics-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .analytics-card .value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .analytics-card .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .analytics-card.success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        .analytics-card.warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .simulation-result {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #c3e6cb;
+        }
+
         .segmentation-toggle {
             display: flex;
             gap: 10px;
@@ -210,6 +252,21 @@
 
         .segmentation-fields.active {
             display: block;
+        }
+
+        #previewSection {
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         @media (max-width: 600px) {
@@ -254,6 +311,16 @@
                         <option value="ALERTA_IMPORTANTE">🚨 Alerta Importante</option>
                         <option value="EVENTO">📅 Evento</option>
                         <option value="MENSAJE_GENERAL">📢 Mensaje General</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="priority">Prioridad</label>
+                    <select id="priority">
+                        <option value="">Automática (según tipo)</option>
+                        <option value="HIGH">🔴 HIGH - Urgente (sonido + vibración)</option>
+                        <option value="NORMAL">🟡 NORMAL - Estándar</option>
+                        <option value="LOW">🟢 LOW - Silenciosa</option>
                     </select>
                 </div>
 
@@ -303,6 +370,31 @@
                     </div>
                 </div>
 
+                <div class="form-group">
+                    <button type="button" onclick="togglePreview()" class="btn" style="background: #17a2b8;">
+                        👁️ Vista Previa en Vivo
+                    </button>
+                </div>
+
+                <div id="previewSection" style="display: none; margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px; border: 2px solid #e0e0e0;">
+                    <h3 style="margin-bottom: 15px; color: #333;">📱 Vista Previa</h3>
+                    <div id="phonePreview" style="max-width: 300px; margin: 0 auto; background: #fff; border-radius: 20px; border: 8px solid #333; padding: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                            <div style="width: 10px; height: 10px; background: #333; border-radius: 50%; margin-right: 5px;"></div>
+                            <div style="flex: 1; height: 6px; background: #333; border-radius: 3px;"></div>
+                        </div>
+                        <div id="previewCard" style="background: #f0f0f0; border-radius: 12px; padding: 12px; border-left: 4px solid #667eea;">
+                            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                                <span id="previewIcon" style="font-size: 24px; margin-right: 10px;">📢</span>
+                                <span id="previewType" style="font-size: 11px; padding: 4px 8px; border-radius: 10px; background: #e0e0e0; color: #666;">MENSAJE GENERAL</span>
+                            </div>
+                            <div id="previewTitle" style="font-weight: 600; margin-bottom: 4px; color: #333;">Título de ejemplo</div>
+                            <div id="previewBody" style="font-size: 13px; color: #666;">Cuerpo de ejemplo</div>
+                            <div id="previewTime" style="font-size: 10px; color: #999; margin-top: 8px;">Ahora</div>
+                        </div>
+                    </div>
+                </div>
+
                 <button type="submit" class="btn" id="sendBtn">
                     📤 Enviar Notificación
                 </button>
@@ -310,13 +402,35 @@
         </div>
 
         <div class="card logs-section">
-            <h2>📋 Historial de Envíos</h2>
+            <h2>� Dashboard de Métricas</h2>
+            <div id="analytics">
+                <p style="color: #666; text-align: center;">Cargando métricas...</p>
+            </div>
+            <button onclick="loadAnalytics()" class="btn" style="margin-top: 15px; background: #17a2b8;">
+                📈 Actualizar Métricas
+            </button>
+        </div>
+
+        <div class="card logs-section">
+            <h2>�� Historial de Envíos</h2>
             <div id="logs">
                 <p style="color: #666; text-align: center;">No hay envíos recientes</p>
             </div>
             <button onclick="loadLogs()" class="btn" style="margin-top: 15px; background: #6c757d;">
                 🔄 Actualizar Historial
             </button>
+        </div>
+
+        <div class="card logs-section">
+            <h2>🚀 Simulación de Carga</h2>
+            <p style="color: #666; margin-bottom: 15px;">Prueba el sistema bajo carga real</p>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <input type="number" id="userCount" value="100" min="1" max="10000" style="flex: 1; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
+            </div>
+            <button onclick="simulateLoad()" class="btn" style="background: #dc3545;">
+                ⚡ Simular Carga
+            </button>
+            <div id="simulationResult" style="margin-top: 15px; display: none;"></div>
         </div>
     </div>
 
@@ -356,6 +470,7 @@
                     title: document.getElementById('title').value,
                     body: document.getElementById('body').value,
                     type: document.getElementById('type').value,
+                    priority: document.getElementById('priority').value || null,
                     sendToAll: activeSegmentation === 'all',
                     targetRole: activeSegmentation === 'role' ? document.getElementById('targetRole').value : null,
                     targetCareer: activeSegmentation === 'career' ? document.getElementById('targetCareer').value : null,
@@ -435,6 +550,141 @@
 
         // Cargar logs al iniciar
         loadLogs();
+        loadAnalytics();
+
+        // Cargar analytics
+        async function loadAnalytics() {
+            try {
+                const response = await fetch(`${API_URL}/analytics`);
+                const result = await response.json();
+
+                if (result.success) {
+                    displayAnalytics(result.analytics);
+                }
+            } catch (error) {
+                console.error('Error al cargar analytics:', error);
+            }
+        }
+
+        // Mostrar analytics
+        function displayAnalytics(analytics) {
+            const container = document.getElementById('analytics');
+            
+            container.innerHTML = `
+                <div class="analytics-grid">
+                    <div class="analytics-card">
+                        <div class="value">${analytics.sends.total}</div>
+                        <div class="label">Total Envíos</div>
+                    </div>
+                    <div class="analytics-card success">
+                        <div class="value">${analytics.sends.last24h}</div>
+                        <div class="label">Últimas 24h</div>
+                    </div>
+                    <div class="analytics-card warning">
+                        <div class="value">${analytics.delivery.successRate}</div>
+                        <div class="label">Tasa de Éxito</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="value">${analytics.interactions.openRate}</div>
+                        <div class="label">Tasa de Apertura</div>
+                    </div>
+                </div>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                    <h4 style="margin-bottom: 10px;">📊 Detalle:</h4>
+                    <p><strong>Automáticos:</strong> ${analytics.sends.automated}</p>
+                    <p><strong>Manuales:</strong> ${analytics.sends.manual}</p>
+                    <p><strong>Abiertas:</strong> ${analytics.interactions.opened}</p>
+                    <p><strong>Ignoradas:</strong> ${analytics.interactions.dismissed}</p>
+                    <p><strong>Uptime:</strong> ${Math.floor(analytics.system.uptime / 3600)}h</p>
+                </div>
+            `;
+        }
+
+        // Simular carga
+        async function simulateLoad() {
+            const userCount = parseInt(document.getElementById('userCount').value);
+            const resultDiv = document.getElementById('simulationResult');
+            
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<p>⏳ Simulando carga...</p>';
+
+            try {
+                const response = await fetch(`${API_URL}/simulate-load`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userCount })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    resultDiv.innerHTML = `
+                        <div class="simulation-result">
+                            <h4>✅ Simulación Completada</h4>
+                            <p><strong>Usuarios:</strong> ${result.simulation.userCount}</p>
+                            <p><strong>Éxitos:</strong> ${result.simulation.successCount}</p>
+                            <p><strong>Fallos:</strong> ${result.simulation.failureCount}</p>
+                            <p><strong>Duración:</strong> ${result.simulation.duration}</p>
+                            <p><strong>Throughput:</strong> ${result.simulation.throughput}</p>
+                        </div>
+                    `;
+                    loadAnalytics();
+                } else {
+                    resultDiv.innerHTML = `<p style="color: #dc3545;">❌ Error: ${result.message}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: #dc3545;">❌ Error: ${error.message}</p>`;
+            }
+        }
+
+        // Actualizar preview en tiempo real
+        document.getElementById('title').addEventListener('input', updatePreview);
+        document.getElementById('body').addEventListener('input', updatePreview);
+        document.getElementById('type').addEventListener('change', updatePreview);
+        document.getElementById('priority').addEventListener('change', updatePreview);
+
+        function togglePreview() {
+            const preview = document.getElementById('previewSection');
+            preview.style.display = preview.style.display === 'none' ? 'block' : 'none';
+            if (preview.style.display === 'block') {
+                updatePreview();
+            }
+        }
+
+        function updatePreview() {
+            const title = document.getElementById('title').value || 'Título de ejemplo';
+            const body = document.getElementById('body').value || 'Cuerpo de ejemplo';
+            const type = document.getElementById('type').value || 'MENSAJE_GENERAL';
+            const priority = document.getElementById('priority').value;
+
+            document.getElementById('previewTitle').textContent = title;
+            document.getElementById('previewBody').textContent = body;
+            document.getElementById('previewType').textContent = type.replace(/_/g, ' ');
+
+            const typeConfig = {
+                'CAFETERIA_READY': { icon: '🍔', color: '#e65100', bg: '#ffe0b2' },
+                'ALERTA_IMPORTANTE': { icon: '🚨', color: '#c62828', bg: '#ffcdd2' },
+                'EVENTO': { icon: '📅', color: '#1565c0', bg: '#bbdefb' },
+                'MENSAJE_GENERAL': { icon: '📢', color: '#424242', bg: '#e0e0e0' }
+            };
+
+            const config = typeConfig[type] || typeConfig['MENSAJE_GENERAL'];
+            document.getElementById('previewIcon').textContent = config.icon;
+            document.getElementById('previewType').style.background = config.bg;
+            document.getElementById('previewType').style.color = config.color;
+            document.getElementById('previewCard').style.borderLeftColor = config.color;
+
+            // Mostrar indicador de prioridad
+            let priorityText = '';
+            if (priority === 'HIGH') priorityText = '🔴 Urgente';
+            else if (priority === 'LOW') priorityText = '🟢 Silenciosa';
+            else if (priority === 'NORMAL') priorityText = '🟡 Normal';
+
+            if (priorityText) {
+                document.getElementById('previewTime').textContent = `Ahora • ${priorityText}`;
+            } else {
+                document.getElementById('previewTime').textContent = 'Ahora';
+            }
+        }
     </script>
 </body>
 </html>

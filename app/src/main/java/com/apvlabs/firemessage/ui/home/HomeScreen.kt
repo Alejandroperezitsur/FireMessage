@@ -26,9 +26,14 @@ fun HomeScreen(
     
     LaunchedEffect(user.id) {
         viewModel.initializeFcmToken(user.id)
+        
+        // Suscripción profesional a topics
         viewModel.subscribeToRoleTopic(user.role.name)
+        viewModel.subscribeToAllUsers()
+        
         if (user.career.isNotBlank()) {
             viewModel.subscribeToCareerTopic(user.career)
+            viewModel.subscribeToCombinedTopic(user.role.name, user.career)
         }
     }
     

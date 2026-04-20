@@ -11,8 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel para la pantalla principal
- * Maneja el token FCM y información del usuario
+ * ViewModel para la pantalla principal con suscripción profesional a topics
  */
 class HomeViewModel(
     private val userRepository: UserRepository,
@@ -26,50 +25,77 @@ class HomeViewModel(
     val fcmToken: StateFlow<String?> = _fcmToken.asStateFlow()
     
     /**
-     * Inicializar y obtener token FCM
+     * Inicializa el token FCM y lo actualiza en Firestore
+     * Suscribe a topics profesionales: role, career, combined, all_users
      */
     fun initializeFcmToken(userId: String) {
         viewModelScope.launch {
             _uiState.value = HomeUiState.Loading
-            val result = fcmTokenRepository.getFcmToken()
-            if (result.isSuccess) {
-                val token = result.getOrNull()!!
-                _fcmToken.value = token
-                
-                // Actualizar token en Firestore
-                val updateResult = userRepository.updateFcmToken(userId, token)
-                if (updateResult.isSuccess) {
-                    _uiState.value = HomeUiState.TokenUpdated(token)
+            
+            try {
+                val token = fcmTokenRepository.getFcmToken()
+                if (token != null) {
+                    _fcmToken.value = token
+                    userRepository.updateFcmToken(userId, token)
+                    _uiState.value = HomeUiState.Success("Token FCM actualizado")
                 } else {
-                    _uiState.value = HomeUiState.Error(
-                        updateResult.exceptionOrNull()?.message ?: "Error al actualizar token"
-                    )
+                    _uiState.value = HomeUiState.Error("No se pudo obtener el token FCM")
                 }
-            } else {
-                _uiState.value = HomeUiState.Error(
-                    result.exceptionOrNull()?.message ?: "Error al obtener token FCM"
-                )
+            } catch (e: Exception) {
+                _uiState.value = HomeUiState.Error(e.message ?: "Error al inicializar token FCM")
             }
         }
     }
     
     /**
-     * Suscribirse a tópico basado en rol
+     * Suscribe al tópico de rol (role_alumno o role_profesor)
      */
     fun subscribeToRoleTopic(role: String) {
         viewModelScope.launch {
-            val topic = "role_$role"
-            fcmTokenRepository.subscribeToTopic(topic)
+            try {
+                fcmTokenRepository.subscribeToRoleTopic(role)
+            } catch (e: Exception) {
+                // Silencioso, no afecta UX
+            }
         }
     }
     
     /**
-     * Suscribirse a tópico basado en carrera
+     * Suscribe al tópico de carrera (career_sistemas, career_medicina, etc.)
      */
     fun subscribeToCareerTopic(career: String) {
         viewModelScope.launch {
-            val topic = "career_${career.lowercase()}"
-            fcmTokenRepository.subscribeToTopic(topic)
+            try {
+                fcmTokenRepository.subscribeToCareerTopic(career)
+            } catch (e: Exception) {
+                // Silencioso, no afecta UX
+            }
+        }
+    }
+    
+    /**
+     * Suscribe al tópico combinado (role_career)
+     */
+    fun subscribeToCombinedTopic(role: String, career: String) {
+        viewModelScope.launch {
+            try {
+                fcmTokenRepository.subscribeToCombinedTopic(role, career)
+            } catch (e: Exception) {
+                // Silencioso, no afecta UX
+            }
+        }
+    }
+    
+    /**
+     * Suscribe al tópico global para todos los usuarios
+     */
+    fun subscribeToAllUsers() {
+        viewModelScope.launch {
+            try {
+                fcmTokenRepository.subscribeToAllUsers()
+            } catch (e: Exception) {
+                // Silencioso, no afecta UX
+            }
         }
     }
     
@@ -87,6 +113,6 @@ class HomeViewModel(
 sealed class HomeUiState {
     object Idle : HomeUiState()
     object Loading : HomeUiState()
-    data class TokenUpdated(val token: String) : HomeUiState()
+    data class Success(val message: String) : HomeUiState()
     data class Error(val message: String) : HomeUiState()
 }

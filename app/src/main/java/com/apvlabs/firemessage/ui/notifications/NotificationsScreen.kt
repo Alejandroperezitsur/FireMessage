@@ -14,20 +14,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.apvlabs.firemessage.data.model.Notification
+import com.apvlabs.firemessage.data.local.entity.NotificationEntity
+import com.apvlabs.firemessage.data.model.NotificationPriority
 import com.apvlabs.firemessage.data.model.NotificationType
 import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * Pantalla de Notificaciones
+ * Pantalla de Notificaciones profesional con Room database
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationsScreen(
     viewModel: NotificationViewModel,
     onLogout: () -> Unit
 ) {
-    val notifications by viewModel.notifications.collectAsState()
+    val notifications by viewModel.notifications.collectAsState(initial = emptyList())
     val uiState by viewModel.uiState.collectAsState()
     
     Scaffold(
@@ -48,7 +50,7 @@ fun NotificationsScreen(
         }
     ) { paddingValues ->
         if (notifications.isEmpty()) {
-            // Empty state
+            // Empty state mejorado
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -90,6 +92,9 @@ fun NotificationsScreen(
                         notification = notification,
                         onClick = {
                             viewModel.markAsRead(notification.id)
+                        },
+                        onDelete = {
+                            viewModel.deleteNotification(notification.id)
                         }
                     )
                 }
@@ -98,12 +103,37 @@ fun NotificationsScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationItem(
-    notification: Notification,
-    onClick: () -> Unit
+    notification: NotificationEntity,
+    onClick: () -> Unit,
+    onDelete: () -> Unit
 ) {
     val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+    
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Eliminar notificación") },
+            text = { Text("¿Estás seguro de eliminar esta notificación?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDelete()
+                    showDeleteDialog = false
+                }) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
     
     Card(
         modifier = Modifier
@@ -115,6 +145,9 @@ fun NotificationItem(
             } else {
                 MaterialTheme.colorScheme.primaryContainer
             }
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (!notification.isRead) 4.dp else 1.dp
         )
     ) {
         Row(
@@ -158,12 +191,31 @@ fun NotificationItem(
                     shape = MaterialTheme.shapes.small
                 ) {
                     Text(
-                        text = notification.type.displayName,
+                        text = notification.type.name.replace("_", " "),
                         style = MaterialTheme.typography.labelSmall,
                         color = getNotificationColor(notification.type),
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
+            }
+            
+            // Priority indicator
+            if (notification.priority == NotificationPriority.HIGH) {
+                Icon(
+                    Icons.Default.PriorityHigh,
+                    contentDescription = "Alta prioridad",
+                    tint = Color.Red,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            
+            // Delete button
+            IconButton(onClick = { showDeleteDialog = true }) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Eliminar",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
             
             if (!notification.isRead) {

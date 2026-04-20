@@ -4,9 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.apvlabs.firemessage.data.model.Notification
 import com.apvlabs.firemessage.data.repository.NotificationRepository
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
@@ -17,8 +15,8 @@ class NotificationViewModel(
     private val notificationRepository: NotificationRepository
 ) : ViewModel() {
     
-    private val _notifications = MutableStateFlow<List<Notification>>(emptyList())
-    val notifications: StateFlow<List<Notification>> = _notifications.asStateFlow()
+    // Usa Flow directo de Room para actualizaciones en tiempo real
+    val notifications = notificationRepository.getNotificationsFlow()
     
     private val _uiState = MutableStateFlow<NotificationUiState>(NotificationUiState.Idle)
     val uiState: StateFlow<NotificationUiState> = _uiState.asStateFlow()
@@ -33,7 +31,7 @@ class NotificationViewModel(
     private fun loadNotifications() {
         viewModelScope.launch {
             notificationRepository.getNotifications().collect { notificationList ->
-                _notifications.value = notificationList
+                // No es necesario actualizar _notifications ya que se usa el flow de Room
             }
         }
     }
