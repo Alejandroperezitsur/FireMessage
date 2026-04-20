@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "868374962699",
+    "project_id": "project-65f7aeb1-a534-4544-8a6",
+    "storage_bucket": "project-65f7aeb1-a534-4544-8a6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:868374962699:android:90628831f757ddbd70dd0e",
+        "android_client_info": {
+          "package_name": "com.apvlabs.firemessage"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAMSgeiqv4Y3-LUhYee2yN1Mn987dzVKuY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
