@@ -45,6 +45,49 @@ dependencies {
     // Firebase Analytics
     implementation("com.google.firebase:firebase-analytics")
 
+    // Firebase Auth
+    implementation("com.google.firebase:firebase-auth-ktx")
+
+    // Firebase Cloud Messaging
+    implementation("com.google.firebase:firebase-messaging-ktx")
+
+    // Firebase Firestore
+    implementation("com.google.firebase:firebase-firestore-ktx")
+
+    // ViewModel and LiveData
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.8.7")
+
+    // Navigation
+    implementation("androidx.navigation:navigation-compose:2.8.5")
+
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
+
+    // DataStore for offline caching
+    implementation("androidx.datastore:datastore-preferences:1.1.2")
+
+    // Material Icons Extended
+    implementation("androidx.compose.material:material-icons-extended:1.7.6")
+
+    // Accompanist (for system UI controller)
+    implementation("com.google.accompanist:accompanist-systemuicontroller:0.36.0")
+
+    // Retrofit for API calls
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+    // Gson for JSON parsing
+    implementation("com.google.code.gson:gson:2.11.0")
+
+    // Koin for dependency injection
+    implementation("io.insert-koin:koin-android:3.5.6")
+    implementation("io.insert-koin:koin-androidx-compose:3.5.6")
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

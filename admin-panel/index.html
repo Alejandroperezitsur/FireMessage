@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlertaCampus - Panel Admin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .logs-section {
+            margin-top: 30px;
+        }
+
+        .log-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .log-item .timestamp {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .log-item .type {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .type-CAFETERIA_READY { background: #ffe0b2; color: #e65100; }
+        .type-ALERTA_IMPORTANTE { background: #ffcdd2; color: #c62828; }
+        .type-EVENTO { background: #bbdefb; color: #1565c0; }
+        .type-MENSAJE_GENERAL { background: #e0e0e0; color: #424242; }
+
+        .log-item .message {
+            color: #333;
+            font-weight: 600;
+        }
+
+        .log-item .target {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .segmentation-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .segmentation-toggle button {
+            flex: 1;
+            padding: 10px;
+            background: #e0e0e0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .segmentation-toggle button.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .segmentation-fields {
+            display: none;
+        }
+
+        .segmentation-fields.active {
+            display: block;
+        }
+
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔔 AlertaCampus</h1>
+            <p>Panel de Administración de Notificaciones</p>
+        </div>
+
+        <div class="card">
+            <h2>Enviar Notificación</h2>
+            
+            <div id="alert" class="alert"></div>
+
+            <form id="notificationForm">
+                <div class="form-group">
+                    <label for="title">Título *</label>
+                    <input type="text" id="title" required placeholder="Ej: Clase cancelada">
+                </div>
+
+                <div class="form-group">
+                    <label for="body">Mensaje *</label>
+                    <textarea id="body" required placeholder="Ej: La clase de Programación ha sido cancelada por motivos del docente"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="type">Tipo de Notificación *</label>
+                    <select id="type" required>
+                        <option value="">Selecciona un tipo</option>
+                        <option value="CAFETERIA_READY">🍔 Cafetería</option>
+                        <option value="ALERTA_IMPORTANTE">🚨 Alerta Importante</option>
+                        <option value="EVENTO">📅 Evento</option>
+                        <option value="MENSAJE_GENERAL">📢 Mensaje General</option>
+                    </select>
+                </div>
+
+                <div class="segmentation-toggle">
+                    <button type="button" class="active" data-target="all">Todos</button>
+                    <button type="button" data-target="role">Por Rol</button>
+                    <button type="button" data-target="career">Por Carrera</button>
+                    <button type="button" data-target="token">Token Específico</button>
+                </div>
+
+                <div id="segmentation-all" class="segmentation-fields active">
+                    <p style="color: #666; margin-bottom: 15px;">La notificación se enviará a todos los usuarios.</p>
+                </div>
+
+                <div id="segmentation-role" class="segmentation-fields">
+                    <div class="form-group">
+                        <label for="targetRole">Rol</label>
+                        <select id="targetRole">
+                            <option value="">Selecciona un rol</option>
+                            <option value="STUDENT">Alumno</option>
+                            <option value="PROFESSOR">Profesor</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="segmentation-career" class="segmentation-fields">
+                    <div class="form-group">
+                        <label for="targetCareer">Carrera</label>
+                        <select id="targetCareer">
+                            <option value="">Selecciona una carrera</option>
+                            <option value="Ingeniería de Sistemas">Ingeniería de Sistemas</option>
+                            <option value="Ingeniería Civil">Ingeniería Civil</option>
+                            <option value="Ingeniería Industrial">Ingeniería Industrial</option>
+                            <option value="Medicina">Medicina</option>
+                            <option value="Derecho">Derecho</option>
+                            <option value="Administración">Administración</option>
+                            <option value="Arquitectura">Arquitectura</option>
+                            <option value="Psicología">Psicología</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="segmentation-token" class="segmentation-fields">
+                    <div class="form-group">
+                        <label for="token">Token FCM</label>
+                        <input type="text" id="token" placeholder="Pega el token FCM del usuario">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn" id="sendBtn">
+                    📤 Enviar Notificación
+                </button>
+            </form>
+        </div>
+
+        <div class="card logs-section">
+            <h2>📋 Historial de Envíos</h2>
+            <div id="logs">
+                <p style="color: #666; text-align: center;">No hay envíos recientes</p>
+            </div>
+            <button onclick="loadLogs()" class="btn" style="margin-top: 15px; background: #6c757d;">
+                🔄 Actualizar Historial
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000';
+
+        // Toggle de segmentación
+        document.querySelectorAll('.segmentation-toggle button').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.segmentation-toggle button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                button.classList.add('active');
+
+                document.querySelectorAll('.segmentation-fields').forEach(field => {
+                    field.classList.remove('active');
+                });
+                document.getElementById(`segmentation-${button.dataset.target}`).classList.add('active');
+            });
+        });
+
+        // Enviar notificación
+        document.getElementById('notificationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const sendBtn = document.getElementById('sendBtn');
+            const alert = document.getElementById('alert');
+            
+            sendBtn.disabled = true;
+            sendBtn.textContent = '⏳ Enviando...';
+            alert.style.display = 'none';
+
+            try {
+                const activeSegmentation = document.querySelector('.segmentation-toggle button.active').dataset.target;
+                
+                const payload = {
+                    title: document.getElementById('title').value,
+                    body: document.getElementById('body').value,
+                    type: document.getElementById('type').value,
+                    sendToAll: activeSegmentation === 'all',
+                    targetRole: activeSegmentation === 'role' ? document.getElementById('targetRole').value : null,
+                    targetCareer: activeSegmentation === 'career' ? document.getElementById('targetCareer').value : null,
+                    token: activeSegmentation === 'token' ? document.getElementById('token').value : null
+                };
+
+                const response = await fetch(`${API_URL}/send-notification`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('success', '✅ Notificación enviada exitosamente');
+                    document.getElementById('notificationForm').reset();
+                    document.querySelector('.segmentation-toggle button[data-target="all"]').click();
+                    loadLogs();
+                } else {
+                    showAlert('error', `❌ Error: ${result.message}`);
+                }
+            } catch (error) {
+                showAlert('error', `❌ Error de conexión: ${error.message}`);
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = '📤 Enviar Notificación';
+            }
+        });
+
+        // Mostrar alerta
+        function showAlert(type, message) {
+            const alert = document.getElementById('alert');
+            alert.className = `alert ${type}`;
+            alert.textContent = message;
+            alert.style.display = 'block';
+            
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 5000);
+        }
+
+        // Cargar logs
+        async function loadLogs() {
+            try {
+                const response = await fetch(`${API_URL}/logs`);
+                const result = await response.json();
+
+                if (result.success) {
+                    displayLogs(result.logs);
+                }
+            } catch (error) {
+                console.error('Error al cargar logs:', error);
+            }
+        }
+
+        // Mostrar logs
+        function displayLogs(logs) {
+            const logsContainer = document.getElementById('logs');
+            
+            if (logs.length === 0) {
+                logsContainer.innerHTML = '<p style="color: #666; text-align: center;">No hay envíos recientes</p>';
+                return;
+            }
+
+            logsContainer.innerHTML = logs.map(log => `
+                <div class="log-item">
+                    <div class="timestamp">${new Date(log.timestamp).toLocaleString('es-ES')}</div>
+                    <span class="type type-${log.type}">${log.type.replace(/_/g, ' ')}</span>
+                    <div class="message">${log.title}</div>
+                    <div class="target">🎯 ${log.target}</div>
+                </div>
+            `).join('');
+        }
+
+        // Cargar logs al iniciar
+        loadLogs();
+    </script>
+</body>
+</html>
