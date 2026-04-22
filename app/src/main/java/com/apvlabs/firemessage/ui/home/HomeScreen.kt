@@ -1,6 +1,7 @@
 package com.apvlabs.firemessage.ui.home
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -41,7 +42,12 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("AlertaCampus") },
+                title = { 
+                    Text(
+                        "AlertaCampus",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 actions = {
                     IconButton(onClick = onNavigateToNotifications) {
                         BadgedBox(
@@ -49,159 +55,216 @@ fun HomeScreen(
                                 // You can add notification count badge here
                             }
                         ) {
-                            Icon(Icons.Default.Notifications, contentDescription = "Notificaciones")
+                            Icon(
+                                Icons.Default.Notifications,
+                                contentDescription = "Notificaciones"
+                            )
                         }
                     }
                     IconButton(onClick = onLogout) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = "Cerrar sesión")
+                        Icon(
+                            Icons.Default.ExitToApp,
+                            contentDescription = "Cerrar sesión"
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         }
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+                .padding(paddingValues),
+            contentPadding = PaddingValues(20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             // Welcome Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
                 ) {
-                    Text(
-                        text = "¡Bienvenido!",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = user.name,
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    Text(
-                        text = "${user.role.name} - ${user.career}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                    )
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "¡Bienvenido!",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                        )
+                        Text(
+                            text = user.name,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                shape = MaterialTheme.shapes.small
+                            ) {
+                                Text(
+                                    text = user.role.name,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                )
+                            }
+                            if (user.career.isNotBlank()) {
+                                Text(
+                                    text = "•",
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
+                                )
+                                Text(
+                                    text = user.career,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
+                    }
                 }
             }
             
-            // Status Cards
-            Text(
-                text = "Estado del Sistema",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
+            // Status Section
+            item {
+                Text(
+                    text = "Estado del Sistema",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
             
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
                 ) {
-                    StatusItem(
-                        icon = Icons.Default.CheckCircle,
-                        label = "Autenticación",
-                        status = "Activa",
-                        isGood = true
-                    )
-                    HorizontalDivider()
-                    StatusItem(
-                        icon = Icons.Default.Notifications,
-                        label = "Notificaciones",
-                        status = if (fcmToken != null) "Activas" else "Configurando...",
-                        isGood = fcmToken != null
-                    )
-                    HorizontalDivider()
-                    StatusItem(
-                        icon = Icons.Default.School,
-                        label = "Suscripción",
-                        status = user.role.name,
-                        isGood = true
-                    )
-                    HorizontalDivider()
-                    StatusItem(
-                        icon = Icons.Default.Work,
-                        label = "Carrera",
-                        status = user.career.ifEmpty { "No especificada" },
-                        isGood = user.career.isNotBlank()
-                    )
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        StatusItem(
+                            icon = Icons.Default.CheckCircle,
+                            label = "Autenticación",
+                            status = "Activa",
+                            isGood = true
+                        )
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+                        StatusItem(
+                            icon = Icons.Default.Notifications,
+                            label = "Notificaciones",
+                            status = if (fcmToken != null) "Activas" else "Configurando...",
+                            isGood = fcmToken != null
+                        )
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+                        StatusItem(
+                            icon = Icons.Default.School,
+                            label = "Suscripción",
+                            status = user.role.name,
+                            isGood = true
+                        )
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+                        StatusItem(
+                            icon = Icons.Default.Work,
+                            label = "Carrera",
+                            status = user.career.ifEmpty { "No especificada" },
+                            isGood = user.career.isNotBlank()
+                        )
+                    }
                 }
             }
             
             // Info Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
                 ) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             Icons.Default.Info,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(24.dp)
                         )
-                        Text(
-                            text = "Información",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "Información",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Text(
+                                text = "Recibirás notificaciones personalizadas según tu rol y carrera.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                            )
+                        }
                     }
-                    Text(
-                        text = "Recibirás notificaciones personalizadas según tu rol y carrera.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
                 }
             }
             
             if (uiState is HomeUiState.Error) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium,
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
                     ) {
-                        Icon(
-                            Icons.Default.Error,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                        Text(
-                            text = (uiState as HomeUiState.Error).message,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Error,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = (uiState as HomeUiState.Error).message,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
                     }
                 }
+            }
+            
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }

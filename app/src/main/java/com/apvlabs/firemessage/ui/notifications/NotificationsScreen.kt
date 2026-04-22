@@ -34,16 +34,24 @@ fun NotificationsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Mis Notificaciones") },
+                title = { 
+                    Text(
+                        "Mis Notificaciones",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 actions = {
                     IconButton(onClick = onLogout) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = "Cerrar sesión")
+                        Icon(
+                            Icons.Default.ExitToApp,
+                            contentDescription = "Cerrar sesión"
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         }
@@ -58,23 +66,25 @@ fun NotificationsScreen(
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.padding(32.dp)
                 ) {
                     Icon(
                         Icons.Default.Notifications,
                         contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        modifier = Modifier.size(72.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
                     Text(
                         text = "No tienes notificaciones",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
                     )
                     Text(
                         text = "Las notificaciones aparecerán aquí",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                 }
             }
@@ -83,8 +93,8 @@ fun NotificationsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                contentPadding = PaddingValues(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(notifications) { notification ->
                     NotificationItem(
@@ -138,6 +148,7 @@ fun NotificationItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = if (notification.isRead) {
                 MaterialTheme.colorScheme.surface
@@ -146,86 +157,144 @@ fun NotificationItem(
             }
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (!notification.isRead) 4.dp else 1.dp
+            defaultElevation = if (!notification.isRead) 2.dp else 0.dp
         )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon based on notification type
-            Icon(
-                imageVector = getNotificationIcon(notification.type),
-                contentDescription = null,
-                tint = getNotificationColor(notification.type),
-                modifier = Modifier.size(40.dp)
-            )
+            // Icon container
+            Surface(
+                color = getNotificationColor(notification.type).copy(alpha = 0.15f),
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    imageVector = getNotificationIcon(notification.type),
+                    contentDescription = null,
+                    tint = getNotificationColor(notification.type),
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
             
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(
-                    text = notification.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.Bold
-                )
-                Text(
-                    text = notification.body,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2
-                )
-                Text(
-                    text = dateFormat.format(Date(notification.timestamp)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-                // Type badge
-                Surface(
-                    color = getNotificationColor(notification.type).copy(alpha = 0.2f),
-                    shape = MaterialTheme.shapes.small
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = notification.type.name.replace("_", " "),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = getNotificationColor(notification.type),
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        text = notification.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.SemiBold,
+                        color = if (notification.isRead) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        },
+                        maxLines = 1
                     )
+                    
+                    if (notification.priority == NotificationPriority.HIGH) {
+                        Surface(
+                            color = Color.Red.copy(alpha = 0.15f),
+                            shape = MaterialTheme.shapes.extraSmall
+                        ) {
+                            Text(
+                                text = "URGENTE",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.Red,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+                
+                Text(
+                    text = notification.body,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (notification.isRead) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    },
+                    maxLines = 2
+                )
+                
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = dateFormat.format(Date(notification.timestamp)),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (notification.isRead) {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        } else {
+                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                        }
+                    )
+                    
+                    // Type badge
+                    Surface(
+                        color = if (notification.isRead) {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                        },
+                        shape = MaterialTheme.shapes.extraSmall
+                    ) {
+                        Text(
+                            text = notification.type.name.replace("_", " "),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (notification.isRead) {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            },
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
                 }
             }
             
-            // Priority indicator
-            if (notification.priority == NotificationPriority.HIGH) {
-                Icon(
-                    Icons.Default.PriorityHigh,
-                    contentDescription = "Alta prioridad",
-                    tint = Color.Red,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            
-            // Delete button
-            IconButton(onClick = { showDeleteDialog = true }) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "Eliminar",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            if (!notification.isRead) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .background(
-                            color = getNotificationColor(notification.type),
-                            shape = MaterialTheme.shapes.small
-                        )
-                )
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // Delete button
+                IconButton(
+                    onClick = { showDeleteDialog = true },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Eliminar",
+                        tint = if (notification.isRead) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+                        },
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                
+                if (!notification.isRead) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(
+                                color = getNotificationColor(notification.type),
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            )
+                    )
+                }
             }
         }
     }
