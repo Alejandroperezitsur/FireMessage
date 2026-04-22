@@ -225,6 +225,39 @@
             border: 1px solid #c3e6cb;
         }
 
+        .event-stream-line {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #00ff00;
+            padding-left: 10px;
+        }
+
+        .event-stream-line.error {
+            border-left-color: #ff4444;
+            color: #ff4444;
+        }
+
+        .event-stream-line.warning {
+            border-left-color: #ffbb33;
+            color: #ffbb33;
+        }
+
+        .event-stream-line.info {
+            border-left-color: #00ff00;
+        }
+
+        .health-ok {
+            background: #28a745;
+        }
+
+        .health-warning {
+            background: #ffc107;
+        }
+
+        .health-error {
+            background: #dc3545;
+        }
+
         .segmentation-toggle {
             display: flex;
             gap: 10px;
@@ -432,6 +465,53 @@
             </button>
             <div id="simulationResult" style="margin-top: 15px; display: none;"></div>
         </div>
+
+        <div class="card logs-section">
+            <h2>📡 Live Event Stream</h2>
+            <p style="color: #666; margin-bottom: 15px;">Eventos del sistema en tiempo real</p>
+            <div id="eventStream" style="background: #1e1e1e; color: #00ff00; padding: 15px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 12px; max-height: 300px; overflow-y: auto;">
+                <p style="color: #666;">[Esperando conexión...]</p>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button onclick="connectEventStream()" class="btn" style="background: #28a745; flex: 1;">
+                    🔌 Conectar Stream
+                </button>
+                <button onclick="disconnectEventStream()" class="btn" style="background: #6c757d; flex: 1;">
+                    🔌 Desconectar
+                </button>
+            </div>
+        </div>
+
+        <div class="card logs-section">
+            <h2>🎭 Demo Guiada</h2>
+            <p style="color: #666; margin-bottom: 15px;">Ejecuta una demo completa del sistema</p>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px;">
+                <button onclick="runFullDemo()" class="btn" style="background: #667eea;">
+                    🎬 Demo Completa
+                </button>
+                <button onclick="toggleDebugMode()" class="btn" style="background: #f093fb;">
+                    🔍 Modo Debug
+                </button>
+                <button onclick="simulateFCMFailure()" class="btn" style="background: #dc3545;">
+                    ❌ Simular Fallo FCM
+                </button>
+                <button onclick="simulateOfflineUser()" class="btn" style="background: #ffc107;">
+                    📴 Simular Offline
+                </button>
+            </div>
+            <div id="demoStatus" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; display: none;"></div>
+        </div>
+
+        <div class="card logs-section">
+            <h2>💖 Salud del Sistema</h2>
+            <div id="healthIndicator" style="display: flex; align-items: center; justify-content: center; padding: 20px;">
+                <div id="healthDot" style="width: 20px; height: 20px; background: #28a745; border-radius: 50%; margin-right: 10px;"></div>
+                <span id="healthText" style="font-size: 18px; font-weight: 600;">OK</span>
+            </div>
+            <button onclick="checkHealth()" class="btn" style="margin-top: 15px; background: #17a2b8;">
+                🏥 Verificar Salud
+            </button>
+        </div>
     </div>
 
     <script>
@@ -633,6 +713,162 @@
                 }
             } catch (error) {
                 resultDiv.innerHTML = `<p style="color: #dc3545;">❌ Error: ${error.message}</p>`;
+            }
+        }
+
+        // Event Stream Management
+        let eventSource = null;
+        let debugMode = false;
+
+        function connectEventStream() {
+            if (eventSource) {
+                eventSource.close();
+            }
+
+            eventSource = new EventSource(`${API_URL}/events/stream`);
+            const streamContainer = document.getElementById('eventStream');
+            streamContainer.innerHTML = '<p style="color: #00ff00;">[Conectando...]</p>';
+
+            eventSource.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                const timestamp = new Date(data.timestamp).toLocaleTimeString();
+                const levelClass = data.level || 'info';
+                const icon = data.type === 'notification_sent' ? '✅' : 
+                           data.type === 'notification_failed' ? '❌' : 
+                           data.type === 'retry_attempt' ? '🔄' : 'ℹ️';
+                
+                const line = document.createElement('div');
+                line.className = `event-stream-line ${levelClass}`;
+                line.innerHTML = `[${timestamp}] ${icon} ${data.type}: ${data.title || data.message || data.error || ''}`;
+                
+                if (debugMode) {
+                    line.innerHTML += ` <span style="color: #888; font-size: 10px;">${JSON.stringify(data)}</span>`;
+                }
+                
+                streamContainer.appendChild(line);
+                streamContainer.scrollTop = streamContainer.scrollHeight;
+
+                // Limitar a 50 líneas
+                while (streamContainer.children.length > 50) {
+                    streamContainer.removeChild(streamContainer.firstChild);
+                }
+            };
+
+            eventSource.onerror = () => {
+                streamContainer.innerHTML = '<p style="color: #ff4444;">[Error de conexión]</p>';
+            };
+        }
+
+        function disconnectEventStream() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+                document.getElementById('eventStream').innerHTML = '<p style="color: #666;">[Desconectado]</p>';
+            }
+        }
+
+        // Auto-refresh analytics every 3 seconds
+        setInterval(() => {
+            if (eventSource) {
+                loadAnalytics();
+            }
+        }, 3000);
+
+        // Demo functions
+        async function runFullDemo() {
+            const demoStatus = document.getElementById('demoStatus');
+            demoStatus.style.display = 'block';
+            demoStatus.innerHTML = '<p>🎬 Iniciando demo completa...</p>';
+
+            try {
+                // Step 1: Send notification
+                demoStatus.innerHTML += '<p>1️⃣ Enviando notificación...</p>';
+                await fetch(`${API_URL}/send-notification`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: 'Demo: Prueba de Sistema',
+                        body: 'Esta es una notificación de demostración',
+                        type: 'MENSAJE_GENERAL',
+                        priority: 'NORMAL',
+                        sendToAll: true
+                    })
+                });
+                
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Step 2: Load analytics
+                demoStatus.innerHTML += '<p>2️⃣ Actualizando métricas...</p>';
+                await loadAnalytics();
+                
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Step 3: Check health
+                demoStatus.innerHTML += '<p>3️⃣ Verificando salud...</p>';
+                await checkHealth();
+                
+                demoStatus.innerHTML += '<p>✅ Demo completada exitosamente!</p>';
+            } catch (error) {
+                demoStatus.innerHTML += `<p>❌ Error: ${error.message}</p>`;
+            }
+        }
+
+        function toggleDebugMode() {
+            debugMode = !debugMode;
+            const demoStatus = document.getElementById('demoStatus');
+            demoStatus.style.display = 'block';
+            demoStatus.innerHTML = debugMode ? '<p>🔍 Modo Debug: ACTIVO</p>' : '<p>🔍 Modo Debug: INACTIVO</p>';
+        }
+
+        async function simulateFCMFailure() {
+            const demoStatus = document.getElementById('demoStatus');
+            demoStatus.style.display = 'block';
+            demoStatus.innerHTML = '<p>❌ Simulando fallo FCM...</p>';
+            
+            // Emitir evento simulado
+            if (eventSource) {
+                const streamContainer = document.getElementById('eventStream');
+                const line = document.createElement('div');
+                line.className = 'event-stream-line error';
+                line.innerHTML = `[${new Date().toLocaleTimeString()}] ❌ SIMULATED: FCM failure - messaging/registration-token-not-registered`;
+                streamContainer.appendChild(line);
+            }
+        }
+
+        async function simulateOfflineUser() {
+            const demoStatus = document.getElementById('demoStatus');
+            demoStatus.style.display = 'block';
+            demoStatus.innerHTML = '<p>📴 Simulando usuario offline...</p>';
+            
+            if (eventSource) {
+                const streamContainer = document.getElementById('eventStream');
+                const line = document.createElement('div');
+                line.className = 'event-stream-line warning';
+                line.innerHTML = `[${new Date().toLocaleTimeString()}] 🔄 SIMULATED: User offline - queuing for retry`;
+                streamContainer.appendChild(line);
+            }
+        }
+
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const result = await response.json();
+                
+                const healthDot = document.getElementById('healthDot');
+                const healthText = document.getElementById('healthText');
+                
+                if (result.success) {
+                    healthDot.className = 'health-ok';
+                    healthText.textContent = 'OK';
+                } else {
+                    healthDot.className = 'health-warning';
+                    healthText.textContent = 'Degradado';
+                }
+            } catch (error) {
+                const healthDot = document.getElementById('healthDot');
+                const healthText = document.getElementById('healthText');
+                healthDot.className = 'health-error';
+                healthText.textContent = 'Fallando';
             }
         }
 

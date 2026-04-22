@@ -3,6 +3,7 @@ package com.apvlabs.firemessage.data.remote
 import com.apvlabs.firemessage.data.model.User
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeout
 
 /**
  * Servicio de base de datos Firestore
@@ -17,8 +18,10 @@ class FirestoreService {
      */
     suspend fun saveUser(user: User): Result<Unit> {
         return try {
-            usersCollection.document(user.id).set(user).await()
-            Result.success(Unit)
+            withTimeout(10000) { // 10 segundos de timeout
+                usersCollection.document(user.id).set(user).await()
+                Result.success(Unit)
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -29,12 +32,14 @@ class FirestoreService {
      */
     suspend fun getUser(userId: String): Result<User?> {
         return try {
-            val document = usersCollection.document(userId).get().await()
-            if (document.exists()) {
-                val user = document.toObject(User::class.java)
-                Result.success(user)
-            } else {
-                Result.success(null)
+            withTimeout(10000) {
+                val document = usersCollection.document(userId).get().await()
+                if (document.exists()) {
+                    val user = document.toObject(User::class.java)
+                    Result.success(user)
+                } else {
+                    Result.success(null)
+                }
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -46,10 +51,12 @@ class FirestoreService {
      */
     suspend fun updateFcmToken(userId: String, token: String): Result<Unit> {
         return try {
-            usersCollection.document(userId)
-                .update("fcmToken", token, "updatedAt", System.currentTimeMillis())
-                .await()
-            Result.success(Unit)
+            withTimeout(10000) {
+                usersCollection.document(userId)
+                    .update("fcmToken", token, "updatedAt", System.currentTimeMillis())
+                    .await()
+                Result.success(Unit)
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -60,9 +67,11 @@ class FirestoreService {
      */
     suspend fun getUsersByRole(role: String): Result<List<User>> {
         return try {
-            val snapshot = usersCollection.whereEqualTo("role", role).get().await()
-            val users = snapshot.documents.mapNotNull { it.toObject(User::class.java) }
-            Result.success(users)
+            withTimeout(10000) {
+                val snapshot = usersCollection.whereEqualTo("role", role).get().await()
+                val users = snapshot.documents.mapNotNull { it.toObject(User::class.java) }
+                Result.success(users)
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -73,9 +82,11 @@ class FirestoreService {
      */
     suspend fun getUsersByCareer(career: String): Result<List<User>> {
         return try {
-            val snapshot = usersCollection.whereEqualTo("career", career).get().await()
-            val users = snapshot.documents.mapNotNull { it.toObject(User::class.java) }
-            Result.success(users)
+            withTimeout(10000) {
+                val snapshot = usersCollection.whereEqualTo("career", career).get().await()
+                val users = snapshot.documents.mapNotNull { it.toObject(User::class.java) }
+                Result.success(users)
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -86,9 +97,11 @@ class FirestoreService {
      */
     suspend fun getAllUsers(): Result<List<User>> {
         return try {
-            val snapshot = usersCollection.get().await()
-            val users = snapshot.documents.mapNotNull { it.toObject(User::class.java) }
-            Result.success(users)
+            withTimeout(10000) {
+                val snapshot = usersCollection.get().await()
+                val users = snapshot.documents.mapNotNull { it.toObject(User::class.java) }
+                Result.success(users)
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -99,12 +112,14 @@ class FirestoreService {
      */
     suspend fun getUsersByRoleAndCareer(role: String, career: String): Result<List<User>> {
         return try {
-            val snapshot = usersCollection
-                .whereEqualTo("role", role)
-                .whereEqualTo("career", career)
-                .get().await()
-            val users = snapshot.documents.mapNotNull { it.toObject(User::class.java) }
-            Result.success(users)
+            withTimeout(10000) {
+                val snapshot = usersCollection
+                    .whereEqualTo("role", role)
+                    .whereEqualTo("career", career)
+                    .get().await()
+                val users = snapshot.documents.mapNotNull { it.toObject(User::class.java) }
+                Result.success(users)
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }

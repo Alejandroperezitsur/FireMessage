@@ -84,12 +84,22 @@ class AuthViewModel(
     }
     
     /**
-     * Verificar si hay usuario autenticado
+     * Verificar si hay usuario autenticado y cargar sus datos
      */
     fun checkAuthStatus() {
-        if (userRepository.isLoggedIn()) {
-            // En una app real, aquí cargaríamos el usuario desde caché o Firestore
-            _uiState.value = AuthUiState.Idle
+        viewModelScope.launch {
+            if (userRepository.isUserLoggedIn()) {
+                _uiState.value = AuthUiState.Loading
+                val user = userRepository.getCurrentUser()
+                if (user != null) {
+                    _currentUser.value = user
+                    _uiState.value = AuthUiState.Success(user)
+                } else {
+                    _uiState.value = AuthUiState.Idle
+                }
+            } else {
+                _uiState.value = AuthUiState.Idle
+            }
         }
     }
     

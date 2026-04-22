@@ -1,8 +1,6 @@
 package com.apvlabs.firemessage.data.repository
 
-import com.apvlabs.firemessage.data.local.NotificationDao
 import com.apvlabs.firemessage.data.local.NotificationCache
-import com.apvlabs.firemessage.data.local.entity.NotificationEntity
 import com.apvlabs.firemessage.data.model.Notification
 import com.apvlabs.firemessage.data.remote.FirestoreNotificationService
 import com.apvlabs.firemessage.data.remote.NotificationApiService
@@ -12,97 +10,61 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Repositorio profesional para gestión de notificaciones
- * Combina Room (offline), Firestore (global sync), API (backend), y Analytics
+ * Repositorio simplificado para gestión de notificaciones
+ * Temporarily without Room - using cache only
  */
 class NotificationRepository(
     private val notificationCache: NotificationCache,
     private val notificationApiService: NotificationApiService,
-    private val notificationDao: NotificationDao,
-    private val firestoreNotificationService: FirestoreNotificationService,
-    private val analyticsService: AnalyticsService
+    private val firestoreNotificationService: FirestoreNotificationService
 ) {
     
     private val _notifications = MutableStateFlow<List<Notification>>(emptyList())
     val notifications: StateFlow<List<Notification>> = _notifications.asStateFlow()
     
     /**
-     * Obtiene todas las notificaciones de Room
+     * Obtiene todas las notificaciones del caché
      */
     fun getNotificationsFlow(): Flow<List<Notification>> {
-        return notificationDao.getAllNotifications()
+        return _notifications.asStateFlow()
     }
     
     /**
-     * Guarda una notificación en Room (offline) y Firestore (global sync)
+     * Guarda una notificación en caché
      */
     suspend fun saveNotification(notification: Notification) {
-        // Guardar en Room para persistencia offline
-        val entity = NotificationEntity(
-            id = notification.id,
-            title = notification.title,
-            body = notification.body,
-            type = notification.type,
-            priority = notification.priority,
-            isRead = notification.isRead,
-            timestamp = notification.timestamp,
-            syncedWithFirestore = false,
-            data = notification.data
-        )
-        notificationDao.insertNotification(entity)
-        
-        // Intentar guardar en Firestore para sync global (no bloquear si falla)
-        try {
-            firestoreNotificationService.saveNotification(notification)
-            notificationDao.markAsSynced(notification.id)
-        } catch (e: Exception) {
-            // Se marcará como no sincronizado para retry con WorkManager
-        }
+        notificationCache.saveNotification(notification)
+        _notifications.value = notificationCache.getNotifications()
     }
     
     /**
-     * Marca una notificación como leída y tracking de analytics
+     * Marca notificación como leída
      */
-    suspend fun markAsRead(notificationId: String, notificationType: String? = null, userId: String? = null) {
-        notificationDao.markAsRead(notificationId)
-        
-        // Tracking de interacción (no bloquear si falla)
-        if (notificationType != null && userId != null) {
-            try {
-                analyticsService.trackNotificationOpened(notificationId, notificationType, userId)
-            } catch (e: Exception) {
-                // Ignorar errores de tracking
-            }
-        }
+    suspend fun markAsRead(notificationId: String) {
+        notificationCache.markAsRead(notificationId)
+        _notifications.value = notificationCache.getNotifications()
     }
     
     /**
      * Marca todas como leídas
      */
     suspend fun markAllAsRead() {
-        notificationDao.markAllAsRead()
+        notificationCache.markAllAsRead()
+        _notifications.value = notificationCache.getNotifications()
     }
     
     /**
-     * Elimina una notificación con tracking
+     * Elimina notificación
      */
-    suspend fun deleteNotification(notificationId: String, notificationType: String? = null, userId: String? = null) {
-        notificationDao.deleteNotification(notificationId)
-        
-        // Tracking de interacción
-        if (notificationType != null && userId != null) {
-            try {
-                analyticsService.trackNotificationDismissed(notificationId, notificationType, userId)
-            } catch (e: Exception) {
-                // Ignorar errores de tracking
-            }
-        }
+    suspend fun deleteNotification(notificationId: String) {
+        notificationCache.deleteNotification(notificationId)
+        _notifications.value = notificationCache.getNotifications()
     }
     
     /**
-     * Obtiene count de notificaciones no leídas
+     * Obtiene count de no leídas
      */
     suspend fun getUnreadCount(): Int {
-        return notificationDao.getUnreadCount()
+        return notificationCache.getUnreadCount()
     }
 }

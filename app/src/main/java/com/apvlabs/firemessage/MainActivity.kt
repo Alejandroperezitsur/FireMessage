@@ -4,20 +4,19 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.apvlabs.firemessage.data.model.User
-import com.apvlabs.firemessage.di.appModule
+import com.apvlabs.firemessage.ui.auth.AuthUiState
 import com.apvlabs.firemessage.ui.auth.AuthViewModel
 import com.apvlabs.firemessage.ui.auth.LoginScreen
 import com.apvlabs.firemessage.ui.auth.RegisterScreen
@@ -26,7 +25,6 @@ import com.apvlabs.firemessage.ui.home.HomeViewModel
 import com.apvlabs.firemessage.ui.notifications.NotificationsScreen
 import com.apvlabs.firemessage.ui.notifications.NotificationViewModel
 import com.apvlabs.firemessage.ui.theme.FireMessageTheme
-import org.koin.android.ext.android.startKoin
 import org.koin.androidx.compose.koinViewModel
 
 /**
@@ -35,11 +33,6 @@ import org.koin.androidx.compose.koinViewModel
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Inicializar Koin
-        startKoin {
-            modules(appModule)
-        }
         
         enableEdgeToEdge()
         setContent {
@@ -59,13 +52,35 @@ class MainActivity : ComponentActivity() {
 fun AlertaCampusApp(
     navController: NavHostController = rememberNavController()
 ) {
+    val authViewModel: AuthViewModel = koinViewModel()
+    val uiState by authViewModel.uiState.collectAsState()
+    var isCheckingAuth by remember { mutableStateOf(true) }
+
+    // Verificar estado de autenticación al iniciar
+    LaunchedEffect(Unit) {
+        authViewModel.checkAuthStatus()
+        isCheckingAuth = false
+    }
+
+    if (isCheckingAuth) {
+        // Pantalla de carga simple mientras verificamos la sesión
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    // Determinar destino inicial basándonos en el estado actual
+    val startDestination = remember {
+        if (authViewModel.uiState.value is AuthUiState.Success) "home" else "login"
+    }
+
     NavHost(
         navController = navController,
-        startDestination = "login"
+        startDestination = startDestination
     ) {
         // Login Screen
         composable("login") {
-            val viewModel: AuthViewModel = koinViewModel()
             LoginScreen(
                 onLoginSuccess = {
                     navController.navigate("home") {
@@ -75,13 +90,12 @@ fun AlertaCampusApp(
                 onNavigateToRegister = {
                     navController.navigate("register")
                 },
-                viewModel = viewModel
+                viewModel = authViewModel
             )
         }
         
         // Register Screen
         composable("register") {
-            val viewModel: AuthViewModel = koinViewModel()
             RegisterScreen(
                 onRegisterSuccess = {
                     navController.navigate("home") {
@@ -91,13 +105,12 @@ fun AlertaCampusApp(
                 onNavigateToLogin = {
                     navController.popBackStack()
                 },
-                viewModel = viewModel
+                viewModel = authViewModel
             )
         }
         
         // Home Screen
         composable("home") {
-            val authViewModel: AuthViewModel = koinViewModel()
             val homeViewModel: HomeViewModel = koinViewModel()
             val user by authViewModel.currentUser.collectAsState()
             
@@ -115,12 +128,18 @@ fun AlertaCampusApp(
                     },
                     viewModel = homeViewModel
                 )
+            } ?: run {
+                // Si por alguna razón el usuario es null, volver al login
+                LaunchedEffect(Unit) {
+                    navController.navigate("login") {
+                        popUpTo("home") { inclusive = true }
+                    }
+                }
             }
         }
         
         // Notifications Screen
         composable("notifications") {
-            val authViewModel: AuthViewModel = koinViewModel()
             val notificationViewModel: NotificationViewModel = koinViewModel()
             
             NotificationsScreen(

@@ -2,8 +2,6 @@ package com.apvlabs.firemessage.di
 
 import android.content.Context
 import com.apvlabs.firemessage.data.local.NotificationCache
-import com.apvlabs.firemessage.data.local.NotificationDao
-import com.apvlabs.firemessage.data.local.NotificationDatabase
 import com.apvlabs.firemessage.data.remote.FirebaseAuthService
 import com.apvlabs.firemessage.data.remote.FirestoreNotificationService
 import com.apvlabs.firemessage.data.remote.FirestoreService
@@ -20,16 +18,14 @@ import org.koin.dsl.module
 
 /**
  * Módulo de inyección de dependencias con Koin
- * Incluye Room database para persistencia offline real
+ * Simplificado - sin Room temporalmente
  */
 val appModule = module {
     
     // Context
     single { androidContext() }
     
-    // Local - Room Database
-    single { NotificationDatabase.getDatabase(get()) }
-    single { get<NotificationDatabase>().notificationDao() }
+    // Local - Cache only
     single { NotificationCache(get()) }
     
     // Remote
@@ -37,16 +33,14 @@ val appModule = module {
     single { FirestoreService() }
     single { NotificationApiService.create() }
     single { FirestoreNotificationService() }
-    single { AnalyticsService() }
     single { FcmTokenRepository() }
     
     // Repository
     single { UserRepository(get(), get()) }
-    single { NotificationRepository(get(), get(), get(), get(), get()) }
+    single { NotificationRepository(get(), get(), get()) }
     
     // ViewModel
     viewModel { AuthViewModel(get()) }
     viewModel { HomeViewModel(get(), get()) }
     viewModel { NotificationViewModel(get()) }
-}
 }

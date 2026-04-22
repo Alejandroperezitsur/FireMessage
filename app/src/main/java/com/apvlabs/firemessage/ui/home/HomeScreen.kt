@@ -14,6 +14,7 @@ import com.apvlabs.firemessage.data.model.User
 /**
  * Pantalla Principal (Home)
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     user: User,
@@ -118,21 +119,21 @@ fun HomeScreen(
                         status = "Activa",
                         isGood = true
                     )
-                    Divider()
+                    HorizontalDivider()
                     StatusItem(
                         icon = Icons.Default.Notifications,
                         label = "Notificaciones",
                         status = if (fcmToken != null) "Activas" else "Configurando...",
                         isGood = fcmToken != null
                     )
-                    Divider()
+                    HorizontalDivider()
                     StatusItem(
                         icon = Icons.Default.School,
                         label = "Suscripción",
                         status = user.role.name,
                         isGood = true
                     )
-                    Divider()
+                    HorizontalDivider()
                     StatusItem(
                         icon = Icons.Default.Work,
                         label = "Carrera",

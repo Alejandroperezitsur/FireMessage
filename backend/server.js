@@ -1,14 +1,15 @@
 const express = require('express');
 const cors = require('cors');
 const admin = require('firebase-admin');
-const dotenv = require('dotenv');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { body, validationResult } = require('express-validator');
 const sanitizeHtml = require('sanitize-html');
+const { v4: uuidv4 } = require('uuid');
+const { sendWithTransaction, validateNotificationPayload } = require('./transactionManager');
+const eventStreamManager = require('./eventStream');
 
-// Cargar variables de entorno
-dotenv.config();
+require('dotenv').config();
 
 // Inicializar Firebase Admin
 const serviceAccount = require('./firebase-service-account.json');
@@ -126,7 +127,7 @@ async function sendWithRetry(message, maxRetries = 3) {
 
 /**
  * POST /send-notification
- * Endpoint profesional para enviar notificaciones push con FCM Topics
+ * Endpoint profesional v3.1 con idempotencia, transacciones y validación fuerte
  */
 app.post('/send-notification',
   [
@@ -134,7 +135,8 @@ app.post('/send-notification',
     body('body').trim().isLength({ min: 1, max: 500 }).withMessage('Cuerpo requerido (1-500 caracteres)'),
     body('type').isIn(['CAFETERIA_READY', 'ALERTA_IMPORTANTE', 'EVENTO', 'MENSAJE_GENERAL'])
       .withMessage('Tipo de notificación inválido'),
-    body('priority').optional().isIn(['HIGH', 'NORMAL', 'LOW']).withMessage('Prioridad inválida')
+    body('priority').optional().isIn(['HIGH', 'NORMAL', 'LOW']).withMessage('Prioridad inválida'),
+    body('idempotencyKey').optional().isUUID().withMessage('Idempotency key debe ser UUID válido')
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -147,21 +149,38 @@ app.post('/send-notification',
     }
 
     try {
-      const { token, title, body, type, priority, targetRole, targetCareer, sendToAll } = req.body;
-
-      // Sanitizar inputs
-      const sanitizedTitle = sanitizeHtml(title, { allowedTags: [], allowedAttributes: {} });
-      const sanitizedBody = sanitizeHtml(body, { allowedTags: [], allowedAttributes: {} });
-
-      // Verificar si el token está en cache de inválidos
-      if (token && invalidTokens.has(token)) {
+      const payload = req.body;
+      
+      // Validación fuerte con Joi
+      const validation = validateNotificationPayload(payload);
+      if (!validation.valid) {
         return res.status(400).json({
           success: false,
-          message: 'Token FCM inválido o expirado'
+          message: 'Validación de payload fallida',
+          errors: validation.errors
         });
       }
 
-      // Construir mensaje FCM profesional
+      const {
+        title,
+        body,
+        type,
+        priority,
+        targetRole,
+        targetCareer,
+        sendToAll,
+        token,
+        idempotencyKey
+      } = validation.data;
+
+      // Sanitización de inputs
+      const sanitizedTitle = sanitizeHtml(title, { allowedTags: [], allowedAttributes: {} });
+      const sanitizedBody = sanitizeHtml(body, { allowedTags: [], allowedAttributes: {} });
+
+      // Prioridad por defecto según tipo
+      const finalPriority = priority || (type === 'ALERTA_IMPORTANTE' ? 'HIGH' : 'NORMAL');
+
+      // Configuración del mensaje FCM
       const message = {
         notification: {
           title: sanitizedTitle,
@@ -169,84 +188,43 @@ app.post('/send-notification',
         },
         data: {
           type: type,
-          priority: priority || (type === 'ALERTA_IMPORTANTE' ? 'HIGH' : 'NORMAL'),
-          timestamp: Date.now().toString()
+          priority: finalPriority,
+          timestamp: Date.now().toString(),
+          version: '1',
+          idempotencyKey: idempotencyKey || uuidv4()
         },
         android: {
-          priority: getAndroidPriority(type),
+          priority: finalPriority === 'HIGH' ? 'high' : 'normal',
           notification: {
             channel_id: 'alerta_campus_channel',
             sound: shouldVibrate(type) ? 'default' : undefined,
-            vibration: shouldVibrate(type) ? true : false
-          }
-        },
-        apns: {
-          payload: {
-            aps: {
-              sound: shouldVibrate(type) ? 'default' : undefined,
-              badge: type === 'ALERTA_IMPORTANTE' ? 1 : undefined
-            }
+            badge: type === 'ALERTA_IMPORTANTE' ? 1 : undefined
           }
         }
       };
 
-      let response;
       let targetDescription = '';
 
-      // Estrategia de envío por Topics (Profesional) con retry
+      // Estrategia de envío por Topics
       if (sendToAll) {
         message.topic = 'all_users';
         targetDescription = 'all_users';
-        const result = await sendWithRetry(message);
-        if (result.success) {
-          response = result.response;
-        } else {
-          throw result.error;
-        }
       } else if (targetRole && targetCareer) {
-        // Topic combinado: role_career (más específico)
         const normalizedCareer = normalizeCareerName(targetCareer);
         const combinedTopic = `role_${targetRole.toLowerCase()}_${normalizedCareer}`;
         message.topic = combinedTopic;
         targetDescription = combinedTopic;
-        const result = await sendWithRetry(message);
-        if (result.success) {
-          response = result.response;
-        } else {
-          throw result.error;
-        }
       } else if (targetRole) {
-        // Topic por rol: role_alumno, role_profesor
         const roleTopic = `role_${targetRole.toLowerCase()}`;
         message.topic = roleTopic;
         targetDescription = roleTopic;
-        const result = await sendWithRetry(message);
-        if (result.success) {
-          response = result.response;
-        } else {
-          throw result.error;
-        }
       } else if (targetCareer) {
-        // Topic por carrera: career_sistemas
         const careerTopic = `career_${normalizeCareerName(targetCareer)}`;
         message.topic = careerTopic;
         targetDescription = careerTopic;
-        const result = await sendWithRetry(message);
-        if (result.success) {
-          response = result.response;
-        } else {
-          throw result.error;
-        }
       } else if (token) {
-        // Fallback a token específico (menos eficiente)
         message.token = token;
         targetDescription = `token_${token.substring(0, 10)}...`;
-        const result = await sendWithRetry(message);
-        if (result.success) {
-          response = result.response;
-        } else {
-          throw result.error;
-        }
       } else {
         return res.status(400).json({
           success: false,
@@ -254,72 +232,94 @@ app.post('/send-notification',
         });
       }
 
-      // Log avanzado con información completa
+      // Enviar con transacción atómica (TODO o NADA)
+      const result = await sendWithTransaction(message, {
+        notificationId: uuidv4(),
+        title: sanitizedTitle,
+        body: sanitizedBody,
+        type: type,
+        priority: finalPriority,
+        target: targetDescription,
+        targetRole: targetRole || null,
+        targetCareer: targetCareer || null,
+        sendToAll: !!sendToAll,
+        idempotencyKey: idempotencyKey || uuidv4(),
+        version: 1,
+        automated: false
+      }, {
+        senderIp: req.ip,
+        userAgent: req.get('user-agent'),
+        retryCount: 0
+      });
+
+      // Emitir evento al stream
+      eventStreamManager.emitNotificationSent({
+        notificationId: result.notificationId,
+        title: sanitizedTitle,
+        target: targetDescription,
+        latency: result.latency,
+        idempotent: result.idempotent,
+        messageId: result.messageId
+      });
+
+      // Log avanzado
       const log = {
         id: Date.now(),
         title: sanitizedTitle,
         body: sanitizedBody,
         type: type,
-        priority: priority || (type === 'ALERTA_IMPORTANTE' ? 'HIGH' : 'NORMAL'),
+        priority: finalPriority,
         target: targetDescription,
         targetRole: targetRole || null,
         targetCareer: targetCareer || null,
         sendToAll: !!sendToAll,
+        senderIp: req.ip,
+        userAgent: req.get('user-agent'),
         timestamp: new Date().toISOString(),
-        messageId: response,
-        ipAddress: req.ip,
-        userAgent: req.get('user-agent') || 'unknown'
+        messageId: result.messageId,
+        idempotencyKey: result.idempotencyKey,
+        latency: result.latency,
+        version: 1,
+        idempotent: result.idempotent,
+        success: true
       };
-      
+
       sendLogs.unshift(log);
 
-      // Guardar en Firestore para persistencia global (multi-device sync)
-      try {
-        const notificationId = response || `notif_${Date.now()}`;
-        await admin.firestore().collection('notifications').doc(notificationId).set({
-          id: notificationId,
-          title: sanitizedTitle,
-          body: sanitizedBody,
-          type: type,
-          priority: priority || (type === 'ALERTA_IMPORTANTE' ? 'HIGH' : 'NORMAL'),
-          target: targetDescription,
-          targetRole: targetRole || null,
-          targetCareer: targetCareer || null,
-          sendToAll: !!sendToAll,
-          senderIp: req.ip,
-          timestamp: admin.firestore.FieldValue.serverTimestamp(),
-          messageId: response
-        });
-
-        // Guardar en analytics
-        await admin.firestore().collection('analytics').add({
-          type: 'manual_send',
-          title: sanitizedTitle,
-          target: targetDescription,
-          timestamp: admin.firestore.FieldValue.serverTimestamp(),
-          messageId: response,
-          success: true
-        });
-      } catch (firestoreError) {
-        console.error('Error al guardar en Firestore:', firestoreError);
-        // No fallar el endpoint si falla Firestore
-      }
-
-      // Mantener solo los últimos 500 logs (aumentado para auditoría)
       if (sendLogs.length > 500) {
         sendLogs.pop();
       }
 
       res.json({
         success: true,
-        message: 'Notificación enviada exitosamente',
-        messageId: response,
+        message: result.idempotent ? 'Notificación ya procesada (idempotente)' : 'Notificación enviada exitosamente',
+        messageId: result.messageId,
+        notificationId: result.notificationId,
+        idempotencyKey: result.idempotencyKey,
         target: targetDescription,
+        latency: result.latency,
+        idempotent: result.idempotent,
         log
       });
 
     } catch (error) {
       console.error('Error al enviar notificación:', error);
+
+      // Emitir evento de fallo al stream
+      eventStreamManager.emitNotificationFailed({
+        error: error.message,
+        errorCode: error.code,
+        target: targetDescription
+      });
+
+      // Structured log de error
+      console.log(JSON.stringify({
+        event: 'notification_send_error',
+        status: 'error',
+        error: error.message,
+        errorCode: error.code,
+        timestamp: new Date().toISOString()
+      }));
 
       // Si el error es por token inválido, limpiarlo
       if (error.code === 'messaging/registration-token-not-registered' ||
@@ -495,6 +495,14 @@ app.get('/analytics', async (req, res) => {
           : 'N/A',
         byType: interactionsByType
       },
+      performance: {
+        avgLatency: lastWeekLogs.length > 0 
+          ? Math.round(lastWeekLogs.reduce((sum, log) => sum + (log.latency || 0), 0) / lastWeekLogs.length) 
+          : 0,
+        maxLatency: lastWeekLogs.length > 0 
+          ? Math.max(...lastWeekLogs.map(log => log.latency || 0)) 
+          : 0
+      },
       system: {
         uptime: process.uptime(),
         memory: process.memoryUsage(),
@@ -512,6 +520,75 @@ app.get('/analytics', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error al obtener analytics',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /events/stream
+ * Server-Sent Events endpoint para stream en tiempo real
+ */
+app.get('/events/stream', (req, res) => {
+  // Headers para SSE
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
+  // Agregar cliente al stream
+  eventStreamManager.addClient(res);
+
+  // Manejar desconexión del cliente
+  req.on('close', () => {
+    eventStreamManager.removeClient(res);
+  });
+
+  // Keep-alive cada 30 segundos
+  const keepAlive = setInterval(() => {
+    try {
+      res.write(': keep-alive\n\n');
+    } catch (error) {
+      clearInterval(keepAlive);
+      eventStreamManager.removeClient(res);
+    }
+  }, 30000);
+});
+
+/**
+ * GET /stream-stats
+ * Estadísticas del stream
+ */
+app.get('/stream-stats', (req, res) => {
+  res.json({
+    success: true,
+    stats: eventStreamManager.getStats(),
+    timestamp: new Date().toISOString()
+  });
+});
+
+/**
+ * POST /reprocess-failed
+ * Endpoint para reprocesar notificaciones fallidas (Dead Letter Queue)
+ */
+app.post('/reprocess-failed', async (req, res) => {
+  const { limit = 10 } = req.body;
+  const { reprocessFailedNotifications } = require('./transactionManager');
+  
+  try {
+    const reprocessed = await reprocessFailedNotifications(limit);
+    
+    res.json({
+      success: true,
+      message: `Reprocesadas ${reprocessed} notificaciones fallidas`,
+      reprocessed,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error al reprocesar notificaciones:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al reprocesar notificaciones fallidas',
       error: error.message
     });
   }
@@ -604,14 +681,18 @@ app.use((err, req, res, next) => {
 
 // Iniciar servidor
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor AlertaCampus v3.0 (INTELIGENTE AUTÓNOMO) corriendo en puerto ${PORT}`);
+  console.log(`🚀 Servidor AlertaCampus v3.1 (SISTEMA DISTRIBUIDO RESILIENTE) corriendo en puerto ${PORT}`);
   console.log(`📡 Endpoint: http://localhost:${PORT}`);
   console.log(`📋 Health check: http://localhost:${PORT}/health`);
   console.log(`📊 Stats: http://localhost:${PORT}/stats`);
   console.log(`📈 Analytics: http://localhost:${PORT}/analytics`);
+  console.log(`🔄 Reprocess Failed: http://localhost:${PORT}/reprocess-failed`);
   console.log(`🔒 Security: Helmet + Rate Limiting habilitados`);
   console.log(`🎯 FCM Topics: role_*, career_*, combined topics habilitados`);
   console.log(`🤖 Motor de eventos automático: ACTIVO`);
+  console.log(`🔐 Idempotencia: ACTIVO`);
+  console.log(`📦 Transacciones: ACTIVO`);
+  console.log(`💀 Dead Letter Queue: ACTIVO`);
 });
 
 // Iniciar motor de eventos programados

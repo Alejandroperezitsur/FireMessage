@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.apvlabs.firemessage.data.local.entity.NotificationEntity
+import com.apvlabs.firemessage.data.model.Notification
 import com.apvlabs.firemessage.data.model.NotificationPriority
 import com.apvlabs.firemessage.data.model.NotificationType
 import java.text.SimpleDateFormat
@@ -26,11 +26,10 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationsScreen(
-    viewModel: NotificationViewModel,
+    viewModel: NotificationViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
     onLogout: () -> Unit
 ) {
-    val notifications by viewModel.notifications.collectAsState(initial = emptyList())
-    val uiState by viewModel.uiState.collectAsState()
+    val notifications by viewModel.notifications.collectAsState()
     
     Scaffold(
         topBar = {
@@ -106,7 +105,7 @@ fun NotificationsScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationItem(
-    notification: NotificationEntity,
+    notification: Notification,
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {

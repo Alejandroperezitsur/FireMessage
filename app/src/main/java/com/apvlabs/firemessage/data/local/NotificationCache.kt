@@ -1,80 +1,58 @@
 package com.apvlabs.firemessage.data.local
 
 import android.content.Context
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
+import android.content.SharedPreferences
 import com.apvlabs.firemessage.data.model.Notification
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 
 /**
- * DataStore para caché de notificaciones offline
+ * Caché simplificado para notificaciones
+ * Usa SharedPreferences para persistencia básica
  */
-private val Context.notificationDataStore: DataStore<Preferences> by preferencesDataStore(name = "notifications")
-
-class NotificationCache(private val context: Context) {
-    
+class NotificationCache(context: Context) {
+    private val prefs: SharedPreferences = context.getSharedPreferences("notification_cache", Context.MODE_PRIVATE)
     private val gson = Gson()
-    private val NOTIFICATIONS_KEY = stringPreferencesKey("notifications_list")
     
-    /**
-     * Guardar lista de notificaciones en caché
-     */
-    suspend fun saveNotifications(notifications: List<Notification>) {
-        context.notificationDataStore.edit { preferences ->
-            val json = gson.toJson(notifications)
-            preferences[NOTIFICATIONS_KEY] = json
-        }
+    fun saveNotification(notification: Notification) {
+        val notifications = getNotifications().toMutableList()
+        notifications.add(0, notification) // Add at beginning
+        saveNotificationsList(notifications)
     }
     
-    /**
-     * Obtener notificaciones desde caché
-     */
-    fun getNotifications(): Flow<List<Notification>> {
-        return context.notificationDataStore.data.map { preferences ->
-            val json = preferences[NOTIFICATIONS_KEY] ?: "[]"
-            val type = object : TypeToken<List<Notification>>() {}.type
-            gson.fromJson(json, type) ?: emptyList()
-        }
+    fun getNotifications(): List<Notification> {
+        val json = prefs.getString("notifications", null) ?: return emptyList()
+        val type = object : TypeToken<List<Notification>>() {}.type
+        return gson.fromJson(json, type) ?: emptyList()
     }
     
-    /**
-     * Agregar una notificación a la caché
-     */
-    suspend fun addNotification(notification: Notification) {
-        getNotifications().collect { currentList ->
-            val updatedList = listOf(notification) + currentList
-            saveNotifications(updatedList)
-        }
+    private fun saveNotificationsList(notifications: List<Notification>) {
+        val json = gson.toJson(notifications)
+        prefs.edit().putString("notifications", json).apply()
     }
     
-    /**
-     * Marcar notificación como leída
-     */
-    suspend fun markAsRead(notificationId: String) {
-        getNotifications().collect { currentList ->
-            val updatedList = currentList.map { notification ->
-                if (notification.id == notificationId) {
-                    notification.copy(isRead = true)
-                } else {
-                    notification
-                }
+    fun markAsRead(notificationId: String) {
+        val notifications = getNotifications().map { notification ->
+            if (notification.id == notificationId) {
+                notification.copy(isRead = true)
+            } else {
+                notification
             }
-            saveNotifications(updatedList)
         }
+        saveNotificationsList(notifications)
     }
     
-    /**
-     * Limpiar caché de notificaciones
-     */
-    suspend fun clearCache() {
-        context.notificationDataStore.edit { preferences ->
-            preferences.remove(NOTIFICATIONS_KEY)
-        }
+    fun markAllAsRead() {
+        val notifications = getNotifications().map { it.copy(isRead = true) }
+        saveNotificationsList(notifications)
+    }
+    
+    fun deleteNotification(notificationId: String) {
+        val notifications = getNotifications().filter { it.id != notificationId }
+        saveNotificationsList(notifications)
+    }
+    
+    fun getUnreadCount(): Int {
+        return getNotifications().count { !it.isRead }
     }
 }

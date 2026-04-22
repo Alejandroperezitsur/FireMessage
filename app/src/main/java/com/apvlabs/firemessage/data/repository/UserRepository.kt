@@ -88,22 +88,18 @@ class UserRepository(
     }
     
     /**
-     * Obtener usuario actual
+     * Obtener usuario actual desde Firestore
      */
-    fun getCurrentUser(): User? {
-        val firebaseUser = authService.getCurrentUser()
-        return if (firebaseUser != null) {
-            // En una app real, esto debería obtener el usuario desde caché o Firestore
-            null
-        } else {
-            null
-        }
+    suspend fun getCurrentUser(): User? {
+        val firebaseUser = authService.getCurrentUser() ?: return null
+        val result = firestoreService.getUser(firebaseUser.uid)
+        return result.getOrNull()
     }
     
     /**
-     * Verificar si hay usuario autenticado
+     * Verificar si hay usuario autenticado en Firebase Auth
      */
-    fun isLoggedIn(): Boolean {
+    fun isUserLoggedIn(): Boolean {
         return authService.isLoggedIn()
     }
     

@@ -132,7 +132,7 @@ class FirebaseMessagingService : FirebaseMessagingService() {
                 isRead = false,
                 data = data
             )
-            notificationCache.addNotification(notification)
+            notificationCache.saveNotification(notification)
         }
     }
     

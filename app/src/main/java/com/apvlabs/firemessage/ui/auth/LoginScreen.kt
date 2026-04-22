@@ -17,6 +17,7 @@ import com.apvlabs.firemessage.data.model.UserRole
 /**
  * Pantalla de Login
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,

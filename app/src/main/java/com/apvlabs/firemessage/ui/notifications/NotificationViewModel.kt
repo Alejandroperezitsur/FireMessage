@@ -15,26 +15,8 @@ class NotificationViewModel(
     private val notificationRepository: NotificationRepository
 ) : ViewModel() {
     
-    // Usa Flow directo de Room para actualizaciones en tiempo real
-    val notifications = notificationRepository.getNotificationsFlow()
-    
-    private val _uiState = MutableStateFlow<NotificationUiState>(NotificationUiState.Idle)
-    val uiState: StateFlow<NotificationUiState> = _uiState.asStateFlow()
-    
-    init {
-        loadNotifications()
-    }
-    
-    /**
-     * Cargar notificaciones desde caché
-     */
-    private fun loadNotifications() {
-        viewModelScope.launch {
-            notificationRepository.getNotifications().collect { notificationList ->
-                // No es necesario actualizar _notifications ya que se usa el flow de Room
-            }
-        }
-    }
+    // Usa Flow del repositorio para actualizaciones en tiempo real
+    val notifications: StateFlow<List<Notification>> = notificationRepository.notifications
     
     /**
      * Guardar nueva notificación
@@ -50,68 +32,32 @@ class NotificationViewModel(
      */
     fun markAsRead(notificationId: String) {
         viewModelScope.launch {
-            _uiState.value = NotificationUiState.Loading
-            val result = notificationRepository.markAsRead(notificationId)
-            if (result.isSuccess) {
-                _uiState.value = NotificationUiState.Idle
-            } else {
-                _uiState.value = NotificationUiState.Error(
-                    result.exceptionOrNull()?.message ?: "Error al marcar como leída"
-                )
-            }
+            notificationRepository.markAsRead(notificationId)
         }
     }
     
     /**
-     * Enviar notificación
+     * Marcar todas como leídas
      */
-    fun sendNotification(
-        token: String?,
-        title: String,
-        body: String,
-        type: String,
-        targetRole: String? = null,
-        targetCareer: String? = null,
-        sendToAll: Boolean = false
-    ) {
+    fun markAllAsRead() {
         viewModelScope.launch {
-            _uiState.value = NotificationUiState.Loading
-            val result = notificationRepository.sendNotification(
-                token, title, body, type, targetRole, targetCareer, sendToAll
-            )
-            if (result.isSuccess) {
-                _uiState.value = NotificationUiState.Success
-            } else {
-                _uiState.value = NotificationUiState.Error(
-                    result.exceptionOrNull()?.message ?: "Error al enviar notificación"
-                )
-            }
+            notificationRepository.markAllAsRead()
         }
     }
     
     /**
-     * Limpiar caché de notificaciones
+     * Eliminar notificación
      */
-    fun clearCache() {
+    fun deleteNotification(notificationId: String) {
         viewModelScope.launch {
-            notificationRepository.clearCache()
+            notificationRepository.deleteNotification(notificationId)
         }
     }
     
     /**
-     * Resetear estado de UI
+     * Obtiene count de no leídas
      */
-    fun resetUiState() {
-        _uiState.value = NotificationUiState.Idle
+    suspend fun getUnreadCount(): Int {
+        return notificationRepository.getUnreadCount()
     }
-}
-
-/**
- * Estados de UI para notificaciones
- */
-sealed class NotificationUiState {
-    object Idle : NotificationUiState()
-    object Loading : NotificationUiState()
-    object Success : NotificationUiState()
-    data class Error(val message: String) : NotificationUiState()
 }
