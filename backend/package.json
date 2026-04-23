@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "start-simple": "node server-simple.js",
+    "start-v1": "node server-v1.js",
     "dev": "nodemon server.js"
   },
   "keywords": [
@@ -28,6 +29,7 @@
     "firebase-admin": "^12.7.0",
     "helmet": "^7.1.0",
     "joi": "^17.11.0",
+    "jsonwebtoken": "^9.0.3",
     "node-cron": "^3.0.3",
     "node-schedule": "^2.1.1",
     "sanitize-html": "^2.11.0",

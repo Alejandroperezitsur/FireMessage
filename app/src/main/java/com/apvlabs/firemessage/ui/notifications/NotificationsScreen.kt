@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.apvlabs.firemessage.data.model.Notification
+import org.koin.androidx.compose.koinViewModel
 import com.apvlabs.firemessage.data.model.NotificationPriority
 import com.apvlabs.firemessage.data.model.NotificationType
 import java.text.SimpleDateFormat
@@ -27,7 +28,7 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationsScreen(
-    viewModel: NotificationViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+    viewModel: NotificationViewModel = koinViewModel(),
     onLogout: () -> Unit
 ) {
     val notifications by viewModel.notifications.collectAsState()
